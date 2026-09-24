@@ -19,6 +19,7 @@ dataset = datasets.OxfordIIITPet(
 )
 
 
+
 @router.post("/search")
 async def search_image(file: UploadFile = File(...)):
 
@@ -39,11 +40,15 @@ async def search_image(file: UploadFile = File(...)):
         label_id = dataset[int(index)][1]
         label_name = dataset.classes[label_id]
 
+        image_path = dataset._images[int(index)]
+        image_name = image_path.name
+
         results.append({
             "index": int(index),
             "label": label_name,
-            "similarity": float(similarity)
-        })
+            "similarity": float(similarity),
+            "image_url": f"/images/{image_name}"
+            })
 
     return {
         "results": results
