@@ -1,0 +1,13 @@
+venv/
+data/
+embeddings/
+*.pt
+*.pth
+*.ckpt
+# FAISS indexes
+indexes/
+*.index
+*.log
+__pycache__/
+*.py[cod]
+*.pyo
