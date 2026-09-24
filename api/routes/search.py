@@ -1,100 +1,50 @@
-import torch
-import faiss
-from torchvision import models, datasets
+from fastapi import APIRouter, UploadFile, File
 from PIL import Image
-import matplotlib.pyplot as plt
-from pathlib import Path
+import io
+from torchvision import datasets
+
+from services.embedding_service import EmbeddingService
+from services.search_service import SearchService
 
 
-# =========================
-# 1. Dataset
-# =========================
+router = APIRouter()
+
+embedding_service = EmbeddingService()
+search_service = SearchService()
 
 dataset = datasets.OxfordIIITPet(
-    root="../../data",
+    root="./data",
     split="trainval",
     download=False
 )
 
-print(dataset.classes)
 
-# =========================
-# 2. Modèle
-# =========================
+@router.post("/search")
+async def search_image(file: UploadFile = File(...)):
 
-weights = models.ResNet50_Weights.DEFAULT
+    image_bytes = await file.read()
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-model = models.resnet50(weights=weights)
-model.fc = torch.nn.Identity()
-model.eval()
+    embedding = embedding_service.get_embedding(image)
 
-
-# =========================
-# 3. Charger FAISS
-# =========================
-
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-index = faiss.read_index(
-    str(BASE_DIR / "indexes" / "pets_cosine.index")
-)
-
-# =========================
-# 4. Image recherchée
-# =========================
-
-image = Image.open("../../chat.jpg").convert("RGB")
-
-preprocess = weights.transforms()
-
-input_tensor = preprocess(image).unsqueeze(0)
-
-
-# =========================
-# 5. Embedding
-# =========================
-
-with torch.no_grad():
-    embedding = model(input_tensor)
-
-embedding = embedding.numpy().astype("float32")
-faiss.normalize_L2(embedding)
-
-
-# =========================
-# 6. Recherche
-# =========================
-
-distances, indices = index.search(embedding, 5)
-
-
-# =========================
-# 7. Affichage
-# =========================
-
-print("\nRésultats :")
-
-for rank, (index_image, similarity) in enumerate(
-    zip(indices[0], distances[0]),
-    start=1
-):
-
-    result_image, label = dataset[index_image]
-
-    race = dataset.classes[label]
-
-    print(
-        f"{rank}. "
-        f"Index={index_image} | "
-        f"Race={race} | "
-        f"Similarité={similarity:.4f}"
+    indices, similarities = search_service.search(
+        embedding,
+        k=5
     )
 
-    plt.figure()
-    plt.imshow(result_image)
-    plt.title(
-        f"Résultat {rank} - {race}\n"
-        f"Similarité : {similarity:.4f}"
-    )
-    plt.axis("off")
-    plt.show()
+    results = []
+
+    for index, similarity in zip(indices, similarities):
+
+        label_id = dataset[int(index)][1]
+        label_name = dataset.classes[label_id]
+
+        results.append({
+            "index": int(index),
+            "label": label_name,
+            "similarity": float(similarity)
+        })
+
+    return {
+        "results": results
+    }
