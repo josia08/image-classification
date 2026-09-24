@@ -19,6 +19,7 @@ function App() {
     }
   };
 
+   const API_URL = import.meta.env.VITE_API_URL;
   return (
     <main className="min-h-screen bg-gray-950 text-white px-6 py-12">
       <div className="mx-auto max-w-6xl">
@@ -61,7 +62,7 @@ function App() {
                   className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900"
                 >
                   <img
-                    src={`http://127.0.0.1:8000${result.image_url}`}
+                    src={`${API_URL}${result.image_url}`}
                     alt={result.label}
                     className="h-48 w-full object-cover"
                   />
